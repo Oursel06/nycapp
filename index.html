@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYCGL 2026</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+    <meta name="theme-color" content="#1a1a2e">
+</head>
+<body>
+    <nav id="menu">
+        <button class="menu-toggle">☰</button>
+        <div class="menu-overlay"></div>
+        <ul class="menu-list">
+            <li><a href="#" data-day="12">12/02</a></li>
+            <li><a href="#" data-day="13">13/02</a></li>
+            <li><a href="#" data-day="14">14/02</a></li>
+            <li><a href="#" data-day="15">15/02</a></li>
+            <li><a href="#" data-day="16">16/02</a></li>
+            <li><a href="#" data-day="17">17/02</a></li>
+            <li><a href="#" data-day="all">Carte</a></li>
+            <li><a href="#" id="settings-btn">Paramètres</a></li>
+        </ul>
+    </nav>
+
+    <main id="content">
+        <div class="day-section" id="day-12" data-day="12" style="display:none;">
+            <h1>Jeudi 12 février</h1>
+            
+            <section class="period-section">
+                <ul class="places-list"></ul>
+            </section>
+
+            <div id="map-12" class="map-container"></div>
+        </div>
+
+        <div class="day-section" id="day-13" data-day="13" style="display:none;">
+            <h1>Vendredi 13 février</h1>
+            
+            <section class="period-section">
+                <ul class="places-list"></ul>
+            </section>
+
+            <div id="map-13" class="map-container"></div>
+        </div>
+
+        <div class="day-section" id="day-14" data-day="14" style="display:none;">
+            <h1>Samedi 14 février</h1>
+            
+            <section class="period-section">
+                <ul class="places-list"></ul>
+            </section>
+
+            <div id="map-14" class="map-container"></div>
+        </div>
+
+        <div class="day-section" id="day-15" data-day="15" style="display:none;">
+            <h1>Dimanche 15 février</h1>
+            
+            <section class="period-section">
+                <ul class="places-list"></ul>
+            </section>
+
+            <div id="map-15" class="map-container"></div>
+        </div>
+
+        <div class="day-section" id="day-16" data-day="16" style="display:none;">
+            <h1>Lundi 16 février</h1>
+            
+            <section class="period-section">
+                <ul class="places-list"></ul>
+            </section>
+
+            <div id="map-16" class="map-container"></div>
+        </div>
+
+        <div class="day-section" id="day-17" data-day="17" style="display:none;">
+            <h1>Mardi 17 février</h1>
+            
+            <section class="period-section">
+                <ul class="places-list"></ul>
+            </section>
+
+            <div id="map-17" class="map-container"></div>
+        </div>
+
+        <div class="day-section" id="day-all" data-day="all">
+            <div class="map-header">
+                <h1>Carte complète</h1>
+                <div class="map-controls">
+                    <button id="toggle-legend" class="legend-toggle">Afficher légende</button>
+                </div>
+            </div>
+            <div class="map-wrapper">
+                <div id="map-all" class="map-container map-full"></div>
+                <button id="center-user-location" class="center-location-btn" title="Centrer sur ma position">
+                    <img src="gps.png" alt="GPS" width="20" height="20">
+                </button>
+                <button id="show-route-calculator" class="center-location-btn route-calculator-btn" title="Afficher itinéraire">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 15l-6-6-6 6"/>
+                    </svg>
+                </button>
+                <div class="map-controls-mobile">
+                    <button id="toggle-legend-mobile" class="legend-toggle-mobile">Afficher légende</button>
+                    <button id="toggle-route-mobile" class="route-toggle-mobile">Afficher itinéraire</button>
+                </div>
+                <div id="legend-overlay" class="legend-overlay"></div>
+                <div id="route-overlay" class="route-overlay"></div>
+                <div id="legend" class="legend-panel">
+                    <div class="legend-header">
+                        <h3>Légende</h3>
+                    </div>
+                    <div class="legend-content">
+                        <div class="legend-toggle-all">
+                            <label class="toggle-all-label">
+                                <input type="checkbox" id="toggle-all-checkbox" checked>
+                                <span id="toggle-all-text">Tout décocher</span>
+                            </label>
+                        </div>
+                        <div class="legend-search">
+                            <input type="text" id="legend-search-input" class="legend-search-input" placeholder="Rechercher un lieu...">
+                        </div>
+                        <div class="legend-items" id="legend-items"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="route-calculator">
+                <div class="route-inputs">
+                    <div class="route-input-group">
+                        <input type="text" id="route-start" class="route-input" placeholder="Lieu de départ..." autocomplete="off">
+                        <div id="route-start-suggestions" class="route-suggestions"></div>
+                    </div>
+                    <div class="route-input-group">
+                        <input type="text" id="route-end" class="route-input" placeholder="Lieu d'arrivée..." autocomplete="off">
+                        <div id="route-end-suggestions" class="route-suggestions"></div>
+                    </div>
+                    <button id="calculate-route" class="route-button">Calculer</button>
+                </div>
+                <div id="route-result" class="route-result"></div>
+            </div>
+        </div>
+
+        <div class="day-section" id="page-settings" style="display:none;">
+            <div class="settings-header">
+                <h1>Paramètres</h1>
+                <button id="add-place-btn" class="add-place-btn">
+                    <span class="add-icon">+</span>
+                    <span class="add-text">Ajouter un lieu</span>
+                </button>
+            </div>
+            <div id="places-list" class="places-list-container"></div>
+        </div>
+
+        <div class="day-section" id="page-edit-place" style="display:none;">
+            <h1 id="edit-place-title">Modifier un lieu</h1>
+            <button id="back-to-settings" class="back-btn">← Retour</button>
+            <div class="edit-place-form">
+                <div class="form-group">
+                    <label for="edit-place-name">Nom du lieu</label>
+                    <input type="text" id="edit-place-name" class="form-input form-input-full" placeholder="Nom du lieu">
+                </div>
+                <div class="form-group">
+                    <label for="edit-place-day">Jour</label>
+                    <select id="edit-place-day" class="form-input form-input-full">
+                        <option value="">Aucun jour sélectionné</option>
+                        <option value="1202">12/02</option>
+                        <option value="1302">13/02</option>
+                        <option value="1402">14/02</option>
+                        <option value="1502">15/02</option>
+                        <option value="1602">16/02</option>
+                        <option value="1702">17/02</option>
+                    </select>
+                </div>
+                <div class="form-group form-group-coords">
+                    <div class="form-group-inline">
+                        <label for="edit-place-lat">Latitude</label>
+                        <input type="number" id="edit-place-lat" class="form-input form-input-small" step="any" placeholder="Latitude">
+                    </div>
+                    <div class="form-group-inline">
+                        <label for="edit-place-lng">Longitude</label>
+                        <input type="number" id="edit-place-lng" class="form-input form-input-small" step="any" placeholder="Longitude">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div id="edit-place-map" class="map-container"></div>
+                </div>
+                <div class="form-group">
+                    <button id="edit-place-save" class="save-btn">Sauvegarder</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
+
+
+
