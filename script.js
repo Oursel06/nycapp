@@ -760,8 +760,8 @@ function createPopupContent(placeName, placeLat, placeLng, placeId = null) {
         const distanceMeters = Math.round(distance);
         const walkingMinutes = calculateWalkingTime(distanceMeters);
         
-        content += `<div style="text-align: center; font-size: 0.95em; margin-top: 5px; color: #666;">${distanceMeters} m</div>`;
-        content += `<div style="text-align: center; font-size: 0.95em; margin-top: 3px; color: #666;">${walkingMinutes} min</div>`;
+        content += `<div style="text-align: center; font-size: 0.95em; margin-top: 5px; color: #666;">Distance: ${distanceMeters} m</div>`;
+        content += `<div style="text-align: center; font-size: 0.95em; margin-top: 3px; color: #666;">Temps de marche: ${walkingMinutes} min</div>`;
     }
     
     content += `<div style="display: flex; gap: 8px; margin-top: 12px; width: 100%;">
@@ -1001,6 +1001,9 @@ let currentEditPlaceId = null;
 let editPlaceInputHandlers = [];
 let navigationHistory = [];
 let isNavigatingBack = false;
+let lastGeocodeTime = 0;
+let geocodeTimeout = null;
+const GEOCODE_MIN_INTERVAL = 1000;
 
 function navigateTo(state) {
     if (!isNavigatingBack) {
@@ -1142,8 +1145,9 @@ function showEditPlacePage(id) {
             if (lngInput) lngInput.value = place.lng;
             if (daySelect) daySelect.value = place.day || '';
             if (saveBtn) saveBtn.textContent = 'Sauvegarder';
-            setTimeout(() => {
+            setTimeout(async () => {
                 initEditPlaceMap(place.lat, place.lng);
+                await updateAddressFromCoords();
             }, 100);
         }
     } else {
@@ -1153,8 +1157,11 @@ function showEditPlacePage(id) {
         if (lngInput) lngInput.value = '';
         if (daySelect) daySelect.value = '';
         if (saveBtn) saveBtn.textContent = 'Ajouter';
-        setTimeout(() => {
+        const addressInput = document.getElementById('edit-place-address');
+        if (addressInput) addressInput.value = '';
+        setTimeout(async () => {
             initEditPlaceMap(40.7128, -74.0060);
+            await updateAddressFromCoords();
         }, 100);
     }
 }
@@ -1255,15 +1262,16 @@ function initEditPlaceMap(lat, lng) {
     editPlaceMarker = L.marker([lat, lng], { draggable: true })
         .addTo(editPlaceMap);
     
-    editPlaceMarker.on('dragend', () => {
+    editPlaceMarker.on('dragend', async () => {
         const position = editPlaceMarker.getLatLng();
         const latInput = document.getElementById('edit-place-lat');
         const lngInput = document.getElementById('edit-place-lng');
         if (latInput) latInput.value = position.lat.toFixed(7);
         if (lngInput) lngInput.value = position.lng.toFixed(7);
+        await updateAddressFromCoords();
     });
     
-    editPlaceMap.on('click', (e) => {
+    editPlaceMap.on('click', async (e) => {
         const newLat = e.latlng.lat;
         const newLng = e.latlng.lng;
         editPlaceMarker.setLatLng([newLat, newLng]);
@@ -1271,6 +1279,7 @@ function initEditPlaceMap(lat, lng) {
         const lngInput = document.getElementById('edit-place-lng');
         if (latInput) latInput.value = newLat.toFixed(7);
         if (lngInput) lngInput.value = newLng.toFixed(7);
+        await updateAddressFromCoords();
     });
     
     const latInput = document.getElementById('edit-place-lat');
@@ -1284,6 +1293,67 @@ function initEditPlaceMap(lat, lng) {
         lngInput.addEventListener('input', updateMapFromInputs);
         editPlaceInputHandlers.push({ element: lngInput, fn: updateMapFromInputs });
     }
+}
+
+async function reverseGeocode(lat, lng) {
+    const now = Date.now();
+    const timeSinceLastCall = now - lastGeocodeTime;
+    
+    if (timeSinceLastCall < GEOCODE_MIN_INTERVAL) {
+        await new Promise(resolve => setTimeout(resolve, GEOCODE_MIN_INTERVAL - timeSinceLastCall));
+    }
+    
+    lastGeocodeTime = Date.now();
+    
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+            headers: {
+                'User-Agent': 'NYCApp/1.0',
+                'Referer': window.location.origin
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 429 || response.status === 403) {
+                throw new Error('Trop de requêtes. Veuillez patienter quelques instants.');
+            }
+            throw new Error('Erreur de réponse');
+        }
+        
+        const data = await response.json();
+        if (data && data.display_name) {
+            return data.display_name;
+        }
+        return '';
+    } catch (error) {
+        console.error('Erreur reverse geocoding:', error);
+        return '';
+    }
+}
+
+async function updateAddressFromCoords() {
+    if (geocodeTimeout) {
+        clearTimeout(geocodeTimeout);
+    }
+    
+    geocodeTimeout = setTimeout(async () => {
+        const latInput = document.getElementById('edit-place-lat');
+        const lngInput = document.getElementById('edit-place-lng');
+        const addressInput = document.getElementById('edit-place-address');
+        
+        if (!latInput || !lngInput || !addressInput) return;
+        
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            addressInput.value = 'Chargement...';
+            const address = await reverseGeocode(lat, lng);
+            addressInput.value = address || '';
+        } else {
+            addressInput.value = '';
+        }
+    }, 500);
 }
 
 function updateMapFromInputs() {
@@ -1300,6 +1370,7 @@ function updateMapFromInputs() {
     if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
         editPlaceMarker.setLatLng([lat, lng]);
         editPlaceMap.setView([lat, lng], editPlaceMap.getZoom());
+        updateAddressFromCoords();
     }
 }
 

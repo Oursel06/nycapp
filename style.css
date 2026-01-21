@@ -1132,7 +1132,8 @@ select.form-input {
 
 @media (max-width: 968px) {
     .form-group-coords {
-        flex-direction: column;
+        flex-direction: row;
+        gap: 0.5rem;
     }
 
     #edit-place-map {
