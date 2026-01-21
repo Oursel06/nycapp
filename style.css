@@ -8,6 +8,29 @@
     display: none !important;
 }
 
+.leaflet-popup-content-wrapper {
+    padding: 12px !important;
+    min-width: 200px !important;
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    width: auto !important;
+    min-width: 200px;
+}
+
+.popup-btn {
+    transition: opacity 0.2s;
+}
+
+.popup-btn:hover {
+    opacity: 0.9;
+}
+
+.popup-btn:active {
+    opacity: 0.8;
+}
+
 .hotel-marker {
     background: transparent;
     border: none;
@@ -367,6 +390,75 @@ h2 {
 @media (min-width: 769px) {
     .route-calculator-btn {
         display: none;
+    }
+}
+
+@media (min-width: 1024px) {
+    #day-all .map-header .map-controls {
+        display: none !important;
+    }
+    
+    #day-all .map-controls-mobile {
+        display: none !important;
+    }
+    
+    #day-all .legend-overlay {
+        display: none !important;
+    }
+    
+    #day-all .route-overlay {
+        display: none !important;
+    }
+    
+    #day-all #toggle-legend,
+    #day-all #toggle-legend-mobile,
+    #day-all #toggle-route-mobile,
+    #day-all #show-route-calculator {
+        display: none !important;
+    }
+    
+    #day-all .map-wrapper {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+    
+    #day-all .map-container {
+        flex: 1;
+        min-width: 0;
+        height: calc(100vh - 350px);
+        min-height: 500px;
+        position: relative;
+    }
+    
+    #day-all .legend-panel {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        margin-top: 0 !important;
+        width: 320px;
+        flex-shrink: 0;
+        display: block !important;
+        opacity: 1 !important;
+        max-height: calc(100vh - 350px);
+        height: fit-content;
+        overflow-y: auto;
+    }
+    
+    #day-all .legend-panel.active {
+        display: block !important;
+    }
+    
+    #day-all .map-wrapper {
+        position: relative;
+    }
+    
+    #day-all #center-user-location {
+        position: absolute;
+        bottom: 20px;
+        right: calc(320px + 1rem + 20px);
+        z-index: 1000;
     }
 }
 
@@ -892,7 +984,7 @@ h2 {
 
 .place-item {
     display: flex;
-    align-items: stretch;
+    align-items: center;
     justify-content: space-between;
     padding: 0;
     background: #f8f9fa;
@@ -918,23 +1010,30 @@ h2 {
 }
 
 .delete-btn {
-    background: #dc3545;
-    color: white;
+    background: transparent;
+    color: #dc3545;
     border: none;
-    width: 60px;
-    border-radius: 0 4px 4px 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.3s;
+    transition: all 0.3s;
     flex-shrink: 0;
+    margin-right: 0.5rem;
 }
 
 .delete-btn:hover {
-    background: #c82333;
+    background: #fee;
+    color: #c82333;
+}
+
+.delete-btn svg {
+    width: 18px;
+    height: 18px;
 }
 
 .back-btn {

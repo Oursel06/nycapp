@@ -1,116 +1,94 @@
-const defaultPlaces = {
-    1: { id: 1, name: "Grand Central Station", lat: 40.7527, lng: -73.9772, day: "1602" },
-    2: { id: 2, name: "Chrysler Building", lat: 40.7516, lng: -73.9755, day: "1602" },
-    3: { id: 3, name: "Bryant Park", lat: 40.7536, lng: -73.9832, day: "1602" },
-    4: { id: 4, name: "Summit One Vanderbilt", lat: 40.7529, lng: -73.9786, day: "1602" },
-    5: { id: 5, name: "Times Square", lat: 40.7580, lng: -73.9855, day: "1702" },
-    6: { id: 6, name: "Madison Square Garden", lat: 40.7505, lng: -73.9934, day: null },
-    7: { id: 7, name: "Fifth Avenue", lat: 40.7749, lng: -73.9657, day: "1602" },
-    8: { id: 8, name: "Empire State Building", lat: 40.7484, lng: -73.9857, day: null },
-    9: { id: 9, name: "Flatiron Building", lat: 40.7411, lng: -73.9897, day: "1402" },
-    10: { id: 10, name: "Madison Square Park", lat: 40.7424, lng: -73.9876, day: "1402" },
-    11: { id: 11, name: "St Patrick's Cathedral", lat: 40.7585, lng: -73.9760, day: null },
-    12: { id: 12, name: "Hudson Yards", lat: 40.7540, lng: -74.0027, day: "1402" },
-    13: { id: 13, name: "The Vessel", lat: 40.7536, lng: -74.0025, day: "1402" },
-    14: { id: 14, name: "Edge at Hudson Yards", lat: 40.7539, lng: -74.0019, day: "1402" },
-    15: { id: 15, name: "The High Line", lat: 40.7479, lng: -74.0049, day: null },
-    16: { id: 16, name: "Chelsea Market", lat: 40.7424, lng: -74.0060, day: null },
-    17: { id: 17, name: "Wall Street", lat: 40.7064, lng: -74.0094, day: null },
-    18: { id: 18, name: "9/11 Memorial & Museum", lat: 40.7115, lng: -74.0134, day: "1202" },
-    19: { id: 19, name: "One World Observatory", lat: 40.7130, lng: -74.0132, day: null },
-    20: { id: 20, name: "Oculus", lat: 40.7116, lng: -74.0126, day: "1202" },
-    21: { id: 21, name: "Brooklyn Bridge", lat: 40.7061, lng: -73.9969, day: "1302" },
-    22: { id: 22, name: "Pier 35", lat: 40.7094517, lng: -73.9884141, day: "1302" },
-    23: { id: 23, name: "DUMBO", lat: 40.7033, lng: -73.9881, day: "1302" },
-    24: { id: 24, name: "Brooklyn Bridge Park", lat: 40.7003, lng: -73.9967, day: "1302" },
-    25: { id: 25, name: "Brooklyn Heights Promenade", lat: 40.6964, lng: -73.9973, day: "1302" },
-    26: { id: 26, name: "Roosevelt Island", lat: 40.7618, lng: -73.9496, day: null },
-    27: { id: 27, name: "Time Out Market", lat: 40.7031, lng: -73.9903, day: "1302" },
-    28: { id: 28, name: "230 Fifth Rooftop Bar", lat: 40.7430, lng: -73.9887, day: "1402" },
-    29: { id: 29, name: "Central Park", lat: 40.7829, lng: -73.9654, day: "1502" },
-    30: { id: 30, name: "Columbus Circle", lat: 40.7681, lng: -73.9819, day: "1502" },
-    31: { id: 31, name: "Greenwich Village", lat: 40.7336, lng: -74.0027, day: null },
-    32: { id: 32, name: "Washington Square Park", lat: 40.7305056, lng: -73.9968651, day: "1702" },
-    33: { id: 33, name: "Grundy Park point de vue New jersey", lat: 40.7162153, lng: -74.0318602, day: "1202" },
-    34: { id: 34, name: "Squibb Park Bridge", lat: 40.7010568, lng: -73.9963321, day: "1302" },
-    35: { id: 35, name: "Emmett's deep dish", lat: 40.7273322, lng: -74.0024485, day: "1302" },
-    36: { id: 36, name: "Hoboken Pier C Panoramic", lat: 40.7403707, lng: -74.0250004, day: "1202" },
-    37: { id: 37, name: "Roosevelt Island tramway", lat: 40.7612789, lng: -73.9641664, day: "1602" },
-    38: { id: 38, name: "RoofTop at Exchange Place", lat: 40.7157003, lng: -74.0337627, day: "1202" },
-    39: { id: 39, name: "Dallas BBQ", lat: 40.7570239, lng: -73.9886626, day: "1402" },
-    40: { id: 40, name: "Planet Hollywood", lat: 40.7553336, lng: -73.9856934, day: "1502" },
-    41: { id: 41, name: "Hard Rock Cafe", lat: 40.7570352, lng: -73.9866112, day: "1602" },
-    42: { id: 42, name: "Shake Shack", lat: 40.7584105, lng: -73.989219, day: "1702" },
-    43: { id: 43, name: "Freeman Alley", lat: 40.721604, lng: -73.9926156, day: "1602" },
-    44: { id: 44, name: "Catholic Church of St. Joseph", lat: 40.8117583, lng: -73.9541139, day: "1502" }
-};
+const API_URL = 'https://nycapi.vercel.app/api/lieux';
 
-function loadPlaces() {
-    const saved = localStorage.getItem('places');
-    const migratedPlaces = {};
-    
-    if (saved) {
-        const loadedPlaces = JSON.parse(saved);
-        
-        Object.keys(loadedPlaces).forEach(key => {
-            const place = loadedPlaces[key];
-            if (typeof place === 'object' && place !== null) {
-                let id;
-                let name;
-                let day;
-                
-                if (place.hasOwnProperty('id')) {
-                    id = parseInt(place.id);
-                    name = place.name || key;
-                    day = place.hasOwnProperty('day') ? place.day : null;
-                } else {
-                    const match = key.match(/^(\d+)\s+(.+)$/);
-                    if (match) {
-                        id = parseInt(match[1]);
-                        name = match[2];
-                        day = place.hasOwnProperty('day') ? place.day : null;
-                    } else {
-                        id = parseInt(key);
-                        if (!isNaN(id)) {
-                            name = place.name || key;
-                            day = place.hasOwnProperty('day') ? place.day : null;
-                        } else {
-                            return;
-                        }
-                    }
-                }
-                
-                if (!isNaN(id)) {
-                    if (day === null && defaultPlaces[id] && defaultPlaces[id].day !== null) {
-                        day = defaultPlaces[id].day;
-                    }
-                    
-                    migratedPlaces[id] = {
-                        id,
-                        name,
-                        lat: place.lat,
-                        lng: place.lng,
-                        day: day || null
-                    };
-                }
-            }
+function convertApiToApp(apiPlace) {
+    return {
+        id: apiPlace.id,
+        name: apiPlace.nom,
+        lat: parseFloat(apiPlace.latitude),
+        lng: parseFloat(apiPlace.longitude),
+        day: apiPlace.jour || null
+    };
+}
+
+function convertAppToApi(appPlace) {
+    return {
+        nom: appPlace.name,
+        latitude: appPlace.lat.toString(),
+        longitude: appPlace.lng.toString(),
+        adresse: null,
+        jour: appPlace.day || null
+    };
+}
+
+async function getPlaces() {
+    try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('Erreur lors du chargement');
+        const apiPlaces = await response.json();
+        const placesObj = {};
+        apiPlaces.forEach(apiPlace => {
+            const appPlace = convertApiToApp(apiPlace);
+            placesObj[appPlace.id] = appPlace;
         });
+        return placesObj;
+    } catch (error) {
+        console.error('Erreur API getPlaces:', error);
+        return {};
     }
-    
-    Object.keys(defaultPlaces).forEach(id => {
-        if (!migratedPlaces[id]) {
-            migratedPlaces[id] = { ...defaultPlaces[id] };
-        }
-    });
-    
-    return migratedPlaces;
 }
 
-function savePlaces(placesData) {
-    localStorage.setItem('places', JSON.stringify(placesData));
+async function createPlace(placeData) {
+    try {
+        const apiData = convertAppToApi(placeData);
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiData)
+        });
+        if (!response.ok) throw new Error('Erreur lors de la création');
+        const apiPlace = await response.json();
+        return convertApiToApp(apiPlace);
+    } catch (error) {
+        console.error('Erreur API createPlace:', error);
+        throw error;
+    }
 }
 
-let places = loadPlaces();
+async function updatePlace(id, placeData) {
+    try {
+        const apiData = convertAppToApi(placeData);
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiData)
+        });
+        if (!response.ok) throw new Error('Erreur lors de la mise à jour');
+        const apiPlace = await response.json();
+        return convertApiToApp(apiPlace);
+    } catch (error) {
+        console.error('Erreur API updatePlace:', error);
+        throw error;
+    }
+}
+
+async function deletePlaceApi(id) {
+    try {
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Erreur lors de la suppression');
+        return true;
+    } catch (error) {
+        console.error('Erreur API deletePlace:', error);
+        throw error;
+    }
+}
+
+async function loadPlaces() {
+    return await getPlaces();
+}
+
+let places = {};
 
 function getPlaceName(id) {
     const place = places[id];
@@ -257,14 +235,14 @@ function initMap(day) {
         if (place) {
             const marker = L.marker([place.lat, place.lng])
                 .addTo(map)
-                .bindPopup(createPopupContent(place.name, place.lat, place.lng));
+                .bindPopup(createPopupContent(place.name, place.lat, place.lng, id));
             dayMarkers[day][id] = marker;
         }
     });
 
     const hotelMarker = L.marker([hotel.lat, hotel.lng], { icon: redIcon })
         .addTo(map)
-        .bindPopup(createPopupContent(hotel.name, hotel.lat, hotel.lng));
+        .bindPopup(createPopupContent(hotel.name, hotel.lat, hotel.lng, null));
 
     const bounds = coordinates.map(c => [c.lat, c.lng]);
     bounds.push([hotel.lat, hotel.lng]);
@@ -308,14 +286,14 @@ function initAllMap() {
         if (place) {
             const marker = L.marker([place.lat, place.lng])
                 .addTo(map)
-                .bindPopup(createPopupContent(place.name, place.lat, place.lng));
+                .bindPopup(createPopupContent(place.name, place.lat, place.lng, parseInt(id)));
             allMarkers[id] = marker;
         }
     });
 
     const hotelMarker = L.marker([hotel.lat, hotel.lng], { icon: redIcon })
         .addTo(map)
-        .bindPopup(createPopupContent(hotel.name, hotel.lat, hotel.lng));
+        .bindPopup(createPopupContent(hotel.name, hotel.lat, hotel.lng, null));
     allMarkers[hotel.name] = hotelMarker;
 
     const bounds = allCoordinates.map(c => [c.lat, c.lng]);
@@ -730,6 +708,10 @@ function showDay(day) {
     }
 }
 
+function navigateToDay(day) {
+    navigateTo({ type: 'day', id: day });
+}
+
 function createGPSIcon() {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
         <circle fill="#0066FF" cx="10" cy="10" r="6"/>
@@ -764,8 +746,9 @@ function calculateWalkingTime(distanceMeters) {
     return Math.ceil(timeSeconds / 60);
 }
 
-function createPopupContent(placeName, placeLat, placeLng) {
-    let content = `<div style="text-align: center;"><strong>${placeName}</strong></div>`;
+function createPopupContent(placeName, placeLat, placeLng, placeId = null) {
+    const escapedName = placeName.replace(/'/g, "\\'");
+    let content = `<div style="text-align: center; padding: 8px 0;"><strong style="font-size: 1.1em;">${placeName}</strong></div>`;
     
     if (currentUserPosition) {
         const distance = calculateDistance(
@@ -777,23 +760,40 @@ function createPopupContent(placeName, placeLat, placeLng) {
         const distanceMeters = Math.round(distance);
         const walkingMinutes = calculateWalkingTime(distanceMeters);
         
-        content += `<div style="text-align: center; font-size: 0.9em; margin-top: 5px;">${distanceMeters} m</div>`;
-        content += `<div style="text-align: center; font-size: 0.9em; margin-top: 3px;">${walkingMinutes} min</div>`;
-        
-        content += `<div style="text-align: center; margin-top: 8px;">
-            <button onclick="showRoute(${placeLat}, ${placeLng}, '${placeName.replace(/'/g, "\\'")}')" 
-                    style="background: #1a1a2e; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85em; display: inline-flex; align-items: center; gap: 5px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                Itinéraire
-            </button>
-        </div>`;
+        content += `<div style="text-align: center; font-size: 0.95em; margin-top: 5px; color: #666;">${distanceMeters} m</div>`;
+        content += `<div style="text-align: center; font-size: 0.95em; margin-top: 3px; color: #666;">${walkingMinutes} min</div>`;
     }
+    
+    content += `<div style="display: flex; gap: 8px; margin-top: 12px; width: 100%;">
+        <button onclick="showPlaceInfo(${placeId !== null ? placeId : 'null'}, '${escapedName}', ${placeLat}, ${placeLng})" 
+                class="popup-btn popup-btn-info"
+                style="flex: 1; background: #007AFF; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9em; font-weight: 500;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+        </button>
+        <button onclick="showRoute(${placeLat}, ${placeLng}, '${escapedName}')" 
+                class="popup-btn popup-btn-route"
+                style="flex: 1; background: #25D366; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9em; font-weight: 500;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+        </button>
+    </div>`;
     
     return content;
 }
+
+window.showPlaceInfo = function(placeId, placeName, placeLat, placeLng) {
+    if (placeId !== null && places[placeId]) {
+        navigateToEditPlace(placeId);
+    } else {
+        alert(`Informations du lieu:\nNom: ${placeName}\nLatitude: ${placeLat}\nLongitude: ${placeLng}\n\nCe lieu n'est pas dans votre liste.`);
+    }
+};
 
 window.showRoute = function(destLat, destLng, placeName) {
     if (!currentUserPosition || !currentMap) {
@@ -850,14 +850,14 @@ function updateAllPopups() {
         if (place) {
             const marker = allMarkers[id];
             if (marker) {
-                marker.setPopupContent(createPopupContent(place.name, place.lat, place.lng));
+                marker.setPopupContent(createPopupContent(place.name, place.lat, place.lng, parseInt(id)));
             }
         }
     });
 
     const hotelMarker = allMarkers[hotel.name];
     if (hotelMarker) {
-        hotelMarker.setPopupContent(createPopupContent(hotel.name, hotel.lat, hotel.lng));
+        hotelMarker.setPopupContent(createPopupContent(hotel.name, hotel.lat, hotel.lng, null));
     }
 
     Object.keys(maps).forEach(day => {
@@ -866,12 +866,12 @@ function updateAllPopups() {
         dayPlacesList.forEach(id => {
             const place = places[id];
             if (place && dayMarkers[day] && dayMarkers[day][id]) {
-                dayMarkers[day][id].setPopupContent(createPopupContent(place.name, place.lat, place.lng));
+                dayMarkers[day][id].setPopupContent(createPopupContent(place.name, place.lat, place.lng, id));
             }
         });
         
         if (dayMarkers[day] && dayMarkers[day][hotel.name]) {
-            dayMarkers[day][hotel.name].setPopupContent(createPopupContent(hotel.name, hotel.lat, hotel.lng));
+            dayMarkers[day][hotel.name].setPopupContent(createPopupContent(hotel.name, hotel.lat, hotel.lng, null));
         }
     });
 }
@@ -999,6 +999,28 @@ let editPlaceMap = null;
 let editPlaceMarker = null;
 let currentEditPlaceId = null;
 let editPlaceInputHandlers = [];
+let navigationHistory = [];
+let isNavigatingBack = false;
+
+function navigateTo(state) {
+    if (!isNavigatingBack) {
+        history.pushState(state, '', `#${state.type}-${state.id || ''}`);
+        navigationHistory.push(state);
+    }
+    applyState(state);
+}
+
+function applyState(state) {
+    if (state.type === 'day') {
+        showDay(state.id);
+    } else if (state.type === 'page') {
+        if (state.id === 'settings') {
+            showSettingsPage();
+        } else if (state.id === 'edit-place') {
+            showEditPlacePage(state.placeId || null);
+        }
+    }
+}
 
 function showPage(pageId) {
     document.querySelectorAll('.day-section').forEach(section => {
@@ -1023,6 +1045,10 @@ function showSettingsPage() {
     renderPlacesList();
 }
 
+function navigateToSettings() {
+    navigateTo({ type: 'page', id: 'settings' });
+}
+
 function renderPlacesList() {
     const placesList = document.getElementById('places-list');
     if (!placesList) return;
@@ -1036,12 +1062,16 @@ function renderPlacesList() {
         item.className = 'place-item';
         item.innerHTML = `
             <span class="place-name">${place.name}</span>
-            <button class="delete-btn" data-place-id="${id}">X</button>
+            <button class="delete-btn" data-place-id="${id}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
         `;
         
         const nameSpan = item.querySelector('.place-name');
         nameSpan.addEventListener('click', () => {
-            showEditPlacePage(id);
+            navigateToEditPlace(id);
         });
         
         const deleteBtn = item.querySelector('.delete-btn');
@@ -1056,55 +1086,39 @@ function renderPlacesList() {
     });
 }
 
-function deletePlace(id) {
+async function deletePlace(id) {
     const deletedId = parseInt(id);
     
-    if (maps['all']) {
-        if (allMarkers[deletedId]) {
-            maps['all'].removeLayer(allMarkers[deletedId]);
-            delete allMarkers[deletedId];
-        }
-    }
-    
-    Object.keys(dayMarkers).forEach(day => {
-        if (dayMarkers[day][deletedId]) {
-            if (maps[day]) {
-                maps[day].removeLayer(dayMarkers[day][deletedId]);
-            }
-            delete dayMarkers[day][deletedId];
-        }
-    });
-    
-    delete places[deletedId];
-    
-    const idsToReindex = Object.keys(places).map(pid => parseInt(pid)).filter(pid => pid > deletedId).sort((a, b) => b - a);
-    
-    idsToReindex.forEach(pid => {
-        const newId = pid - 1;
-        places[newId] = places[pid];
-        places[newId].id = newId;
-        delete places[pid];
+    try {
+        await deletePlaceApi(deletedId);
         
-        if (allMarkers[pid]) {
-            allMarkers[newId] = allMarkers[pid];
-            delete allMarkers[pid];
+        if (maps['all']) {
+            if (allMarkers[deletedId]) {
+                maps['all'].removeLayer(allMarkers[deletedId]);
+                delete allMarkers[deletedId];
+            }
         }
         
         Object.keys(dayMarkers).forEach(day => {
-            if (dayMarkers[day][pid]) {
-                dayMarkers[day][newId] = dayMarkers[day][pid];
-                delete dayMarkers[day][pid];
+            if (dayMarkers[day][deletedId]) {
+                if (maps[day]) {
+                    maps[day].removeLayer(dayMarkers[day][deletedId]);
+                }
+                delete dayMarkers[day][deletedId];
             }
         });
-    });
-    
-    if (maps['all']) {
-        createLegend();
+        
+        delete places[deletedId];
+        
+        if (maps['all']) {
+            createLegend();
+        }
+        
+        renderPlacesList();
+        updateDayPlacesLists();
+    } catch (error) {
+        alert('Erreur lors de la suppression: ' + error.message);
     }
-    
-    savePlaces(places);
-    renderPlacesList();
-    updateDayPlacesLists();
 }
 
 function showEditPlacePage(id) {
@@ -1145,8 +1159,16 @@ function showEditPlacePage(id) {
     }
 }
 
+function navigateToEditPlace(id) {
+    navigateTo({ type: 'page', id: 'edit-place', placeId: id });
+}
+
 function showAddPlacePage() {
     showEditPlacePage(null);
+}
+
+function navigateToAddPlace() {
+    navigateToEditPlace(null);
 }
 
 function attachPlaceListListeners() {
@@ -1281,7 +1303,7 @@ function updateMapFromInputs() {
     }
 }
 
-function savePlace() {
+async function savePlace() {
     const nameInput = document.getElementById('edit-place-name');
     const latInput = document.getElementById('edit-place-lat');
     const lngInput = document.getElementById('edit-place-lng');
@@ -1310,61 +1332,73 @@ function savePlace() {
     const daySelect = document.getElementById('edit-place-day');
     const selectedDay = daySelect ? daySelect.value : null;
     
-    let placeId;
-    if (currentEditPlaceId !== null && currentEditPlaceId !== undefined) {
-        placeId = currentEditPlaceId;
-        places[placeId].name = name;
-        places[placeId].lat = lat;
-        places[placeId].lng = lng;
-        places[placeId].day = selectedDay || null;
-    } else {
-        placeId = getMaxId() + 1;
-        places[placeId] = { id: placeId, name, lat, lng, day: selectedDay || null };
-    }
+    const placeData = { name, lat, lng, day: selectedDay || null };
     
-    savePlaces(places);
-    
-    if (maps['all']) {
-        if (allMarkers[placeId]) {
-            allMarkers[placeId].setLatLng([lat, lng]);
-            allMarkers[placeId].setPopupContent(createPopupContent(name, lat, lng));
+    try {
+        let placeId;
+        let updatedPlace;
+        
+        if (currentEditPlaceId !== null && currentEditPlaceId !== undefined) {
+            placeId = currentEditPlaceId;
+            updatedPlace = await updatePlace(placeId, placeData);
         } else {
-            const marker = L.marker([lat, lng])
-                .addTo(maps['all'])
-                .bindPopup(createPopupContent(name, lat, lng));
-            allMarkers[placeId] = marker;
+            updatedPlace = await createPlace(placeData);
+            placeId = updatedPlace.id;
         }
         
-        createLegend();
-    }
-    
-    Object.keys(dayMarkers).forEach(day => {
-        const dayPlacesList = getPlacesByDay(day);
-        if (dayPlacesList.includes(placeId)) {
-            if (maps[day]) {
-                if (dayMarkers[day][placeId]) {
-                    dayMarkers[day][placeId].setLatLng([lat, lng]);
-                    dayMarkers[day][placeId].setPopupContent(createPopupContent(name, lat, lng));
-                } else {
-                    const marker = L.marker([lat, lng])
-                        .addTo(maps[day])
-                        .bindPopup(createPopupContent(name, lat, lng));
-                    dayMarkers[day][placeId] = marker;
+        places[placeId] = updatedPlace;
+        
+        if (maps['all']) {
+            if (allMarkers[placeId]) {
+                allMarkers[placeId].setLatLng([lat, lng]);
+                allMarkers[placeId].setPopupContent(createPopupContent(name, lat, lng, placeId));
+            } else {
+                const marker = L.marker([lat, lng])
+                    .addTo(maps['all'])
+                    .bindPopup(createPopupContent(name, lat, lng, placeId));
+                allMarkers[placeId] = marker;
+            }
+            
+            createLegend();
+        }
+        
+        Object.keys(dayMarkers).forEach(day => {
+            const dayPlacesList = getPlacesByDay(day);
+            if (dayPlacesList.includes(placeId)) {
+                if (maps[day]) {
+                    if (dayMarkers[day][placeId]) {
+                        dayMarkers[day][placeId].setLatLng([lat, lng]);
+                        dayMarkers[day][placeId].setPopupContent(createPopupContent(name, lat, lng, placeId));
+                    } else {
+                        const marker = L.marker([lat, lng])
+                            .addTo(maps[day])
+                            .bindPopup(createPopupContent(name, lat, lng, placeId));
+                        dayMarkers[day][placeId] = marker;
+                    }
+                }
+            } else {
+                if (dayMarkers[day] && dayMarkers[day][placeId] && maps[day]) {
+                    maps[day].removeLayer(dayMarkers[day][placeId]);
+                    delete dayMarkers[day][placeId];
                 }
             }
-        } else {
-            if (dayMarkers[day] && dayMarkers[day][placeId] && maps[day]) {
-                maps[day].removeLayer(dayMarkers[day][placeId]);
-                delete dayMarkers[day][placeId];
-            }
-        }
-    });
-    
-    updateDayPlacesLists();
-    showSettingsPage();
+        });
+        
+        updateDayPlacesLists();
+        showSettingsPage();
+    } catch (error) {
+        alert('Erreur lors de la sauvegarde: ' + error.message);
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        places = await loadPlaces();
+    } catch (error) {
+        console.error('Erreur lors du chargement des lieux:', error);
+        places = {};
+    }
+    
     const menuLinks = document.querySelectorAll('.menu-list a');
     const menuList = document.querySelector('.menu-list');
     const menuToggle = document.querySelector('.menu-toggle');
@@ -1389,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const day = link.getAttribute('data-day');
             if (day) {
-                showDay(day);
+                navigateToDay(day);
             }
             closeMenu();
         });
@@ -1399,7 +1433,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addPlaceBtn) {
         addPlaceBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            showAddPlacePage();
+            navigateToAddPlace();
             closeMenu();
         });
     }
@@ -1408,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (settingsBtn) {
         settingsBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            showSettingsPage();
+            navigateToSettings();
             closeMenu();
         });
     }
@@ -1417,7 +1451,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (backToSettingsBtn) {
         backToSettingsBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            showSettingsPage();
+            isNavigatingBack = true;
+            history.back();
+            isNavigatingBack = false;
         });
     }
 
@@ -1610,7 +1646,27 @@ document.addEventListener('DOMContentLoaded', () => {
     
     updateDayPlacesLists();
 
+    const initialState = { type: 'day', id: 'all' };
+    history.replaceState(initialState, '', '#day-all');
+    navigationHistory.push(initialState);
     showDay('all');
 
     attachPlaceListListeners();
+
+    window.addEventListener('popstate', (e) => {
+        isNavigatingBack = true;
+        if (e.state) {
+            applyState(e.state);
+            if (navigationHistory.length > 0) {
+                navigationHistory.pop();
+            }
+        } else if (navigationHistory.length > 0) {
+            navigationHistory.pop();
+            const prevState = navigationHistory[navigationHistory.length - 1] || initialState;
+            applyState(prevState);
+        } else {
+            applyState(initialState);
+        }
+        isNavigatingBack = false;
+    });
 });
