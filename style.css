@@ -1063,6 +1063,7 @@ h2 {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    position: relative;
 }
 
 .form-group-coords {
@@ -1107,6 +1108,73 @@ select.form-input {
 
 .form-input-small {
     width: 100%;
+}
+
+.address-input-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.form-input-address {
+    flex: 1;
+    min-height: 48px;
+    padding: 0.875rem;
+}
+
+.search-address-btn {
+    background: #1a1a2e;
+    color: white;
+    border: none;
+    padding: 0 1.25rem;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s;
+    flex-shrink: 0;
+}
+
+.search-address-btn:hover {
+    background: #2d3561;
+}
+
+.search-address-btn svg {
+    stroke: white;
+}
+
+.address-suggestions {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-top: -5px;
+}
+
+.address-suggestion-item {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+    font-size: 0.95rem;
+}
+
+.address-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.address-suggestion-item:hover {
+    background: #f8f9fa;
 }
 
 .save-btn {

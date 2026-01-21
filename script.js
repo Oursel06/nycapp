@@ -1003,7 +1003,8 @@ let navigationHistory = [];
 let isNavigatingBack = false;
 let lastGeocodeTime = 0;
 let geocodeTimeout = null;
-let addressGeocodeTimeout = null;
+let addressSuggestionsTimeout = null;
+let isSelectingSuggestion = false;
 const GEOCODE_MIN_INTERVAL = 1000;
 
 function navigateTo(state) {
@@ -1285,7 +1286,6 @@ function initEditPlaceMap(lat, lng) {
     
     const latInput = document.getElementById('edit-place-lat');
     const lngInput = document.getElementById('edit-place-lng');
-    const addressInput = document.getElementById('edit-place-address');
     
     if (latInput) {
         latInput.addEventListener('input', updateMapFromInputs);
@@ -1295,10 +1295,62 @@ function initEditPlaceMap(lat, lng) {
         lngInput.addEventListener('input', updateMapFromInputs);
         editPlaceInputHandlers.push({ element: lngInput, fn: updateMapFromInputs });
     }
+    
+    const addressInput = document.getElementById('edit-place-address');
     if (addressInput) {
-        addressInput.addEventListener('input', updateCoordsFromAddress);
-        editPlaceInputHandlers.push({ element: addressInput, fn: updateCoordsFromAddress });
+        addressInput.addEventListener('input', () => {
+            if (!isSelectingSuggestion) {
+                updateAddressSuggestions();
+            }
+        });
+        
+        addressInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                const suggestionsContainer = document.getElementById('address-suggestions');
+                const activeElement = document.activeElement;
+                if (suggestionsContainer && 
+                    activeElement !== addressInput && 
+                    !suggestionsContainer.contains(activeElement)) {
+                    suggestionsContainer.style.display = 'none';
+                }
+            }, 200);
+        });
+        
+        addressInput.addEventListener('focus', () => {
+            const address = addressInput.value.trim();
+            if (address.length >= 3) {
+                updateAddressSuggestions();
+            } else {
+                const suggestionsContainer = document.getElementById('address-suggestions');
+                if (suggestionsContainer) {
+                    suggestionsContainer.style.display = 'none';
+                }
+            }
+        });
     }
+    
+    const searchAddressBtn = document.getElementById('search-address-btn');
+    if (searchAddressBtn) {
+        searchAddressBtn.addEventListener('click', async () => {
+            await searchFirstAddress();
+        });
+    }
+    
+    document.addEventListener('click', (e) => {
+        const suggestionsContainer = document.getElementById('address-suggestions');
+        const addressInput = document.getElementById('edit-place-address');
+        const searchAddressBtn = document.getElementById('search-address-btn');
+        if (suggestionsContainer && addressInput && searchAddressBtn) {
+            const isClickInside = suggestionsContainer.contains(e.target) || 
+                                  e.target === addressInput || 
+                                  e.target === searchAddressBtn ||
+                                  searchAddressBtn.contains(e.target);
+            
+            if (!isClickInside && document.activeElement !== addressInput) {
+                suggestionsContainer.style.display = 'none';
+            }
+        }
+    });
 }
 
 async function reverseGeocode(lat, lng) {
@@ -1337,8 +1389,8 @@ async function reverseGeocode(lat, lng) {
     }
 }
 
-async function geocode(address) {
-    if (!address || address.trim() === '') return null;
+async function geocodeAddress(address) {
+    if (!address || address.trim().length < 3) return [];
     
     const now = Date.now();
     const timeSinceLastCall = now - lastGeocodeTime;
@@ -1351,7 +1403,7 @@ async function geocode(address) {
     
     try {
         const encodedAddress = encodeURIComponent(address);
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&addressdetails=1`, {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=5&addressdetails=1`, {
             headers: {
                 'User-Agent': 'NYCApp/1.0',
                 'Referer': window.location.origin
@@ -1360,23 +1412,115 @@ async function geocode(address) {
         
         if (!response.ok) {
             if (response.status === 429 || response.status === 403) {
-                throw new Error('Trop de requêtes. Veuillez patienter quelques instants.');
+                return [];
             }
-            throw new Error('Erreur de réponse');
+            return [];
         }
         
         const data = await response.json();
-        if (data && data.length > 0) {
-            return {
-                lat: parseFloat(data[0].lat),
-                lng: parseFloat(data[0].lon),
-                display_name: data[0].display_name
-            };
+        if (data && Array.isArray(data)) {
+            return data.map(item => ({
+                lat: parseFloat(item.lat),
+                lng: parseFloat(item.lon),
+                display_name: item.display_name
+            }));
         }
-        return null;
+        return [];
     } catch (error) {
         console.error('Erreur geocoding:', error);
-        return null;
+        return [];
+    }
+}
+
+function showAddressSuggestions(suggestions) {
+    const suggestionsContainer = document.getElementById('address-suggestions');
+    if (!suggestionsContainer) return;
+    
+    suggestionsContainer.innerHTML = '';
+    
+    if (suggestions.length === 0) {
+        suggestionsContainer.style.display = 'none';
+        return;
+    }
+    
+    suggestionsContainer.style.display = 'block';
+    
+    suggestions.forEach((suggestion) => {
+        const item = document.createElement('div');
+        item.className = 'address-suggestion-item';
+        item.textContent = suggestion.display_name;
+        item.addEventListener('click', () => {
+            isSelectingSuggestion = true;
+            const addressInput = document.getElementById('edit-place-address');
+            if (addressInput) {
+                addressInput.value = suggestion.display_name;
+                addressInput.focus();
+            }
+            updateCoordsFromAddress(suggestion.lat, suggestion.lng);
+            suggestionsContainer.style.display = 'none';
+            setTimeout(() => {
+                isSelectingSuggestion = false;
+            }, 100);
+        });
+        suggestionsContainer.appendChild(item);
+    });
+}
+
+function updateCoordsFromAddress(lat, lng) {
+    const latInput = document.getElementById('edit-place-lat');
+    const lngInput = document.getElementById('edit-place-lng');
+    
+    if (latInput) latInput.value = lat.toFixed(7);
+    if (lngInput) lngInput.value = lng.toFixed(7);
+    
+    if (editPlaceMap && editPlaceMarker) {
+        editPlaceMarker.setLatLng([lat, lng]);
+        editPlaceMap.setView([lat, lng], editPlaceMap.getZoom());
+    }
+}
+
+async function updateAddressSuggestions() {
+    if (addressSuggestionsTimeout) {
+        clearTimeout(addressSuggestionsTimeout);
+    }
+    
+    addressSuggestionsTimeout = setTimeout(async () => {
+        if (isSelectingSuggestion) return;
+        
+        const addressInput = document.getElementById('edit-place-address');
+        if (!addressInput) return;
+        
+        const address = addressInput.value.trim();
+        
+        if (address.length >= 3) {
+            const suggestions = await geocodeAddress(address);
+            showAddressSuggestions(suggestions);
+        } else {
+            const suggestionsContainer = document.getElementById('address-suggestions');
+            if (suggestionsContainer) {
+                suggestionsContainer.style.display = 'none';
+            }
+        }
+    }, 300);
+}
+
+async function searchFirstAddress() {
+    const addressInput = document.getElementById('edit-place-address');
+    if (!addressInput) return;
+    
+    const address = addressInput.value.trim();
+    if (address.length < 3) return;
+    
+    const suggestions = await geocodeAddress(address);
+    if (suggestions.length > 0) {
+        const first = suggestions[0];
+        addressInput.value = first.display_name;
+        updateCoordsFromAddress(first.lat, first.lng);
+        
+        const suggestionsContainer = document.getElementById('address-suggestions');
+        if (suggestionsContainer) {
+            suggestionsContainer.style.display = 'none';
+        }
     }
 }
 
@@ -1386,6 +1530,8 @@ async function updateAddressFromCoords() {
     }
     
     geocodeTimeout = setTimeout(async () => {
+        if (isSelectingSuggestion) return;
+        
         const latInput = document.getElementById('edit-place-lat');
         const lngInput = document.getElementById('edit-place-lng');
         const addressInput = document.getElementById('edit-place-address');
@@ -1403,39 +1549,6 @@ async function updateAddressFromCoords() {
             addressInput.value = '';
         }
     }, 500);
-}
-
-async function updateCoordsFromAddress() {
-    if (addressGeocodeTimeout) {
-        clearTimeout(addressGeocodeTimeout);
-    }
-    
-    addressGeocodeTimeout = setTimeout(async () => {
-        const latInput = document.getElementById('edit-place-lat');
-        const lngInput = document.getElementById('edit-place-lng');
-        const addressInput = document.getElementById('edit-place-address');
-        
-        if (!latInput || !lngInput || !addressInput) return;
-        
-        const address = addressInput.value.trim();
-        
-        if (address && address !== 'Chargement...') {
-            const result = await geocode(address);
-            if (result) {
-                if (latInput) latInput.value = result.lat.toFixed(7);
-                if (lngInput) lngInput.value = result.lng.toFixed(7);
-                
-                if (editPlaceMap && editPlaceMarker) {
-                    editPlaceMarker.setLatLng([result.lat, result.lng]);
-                    editPlaceMap.setView([result.lat, result.lng], editPlaceMap.getZoom());
-                }
-                
-                if (addressInput.value !== result.display_name) {
-                    addressInput.value = result.display_name;
-                }
-            }
-        }
-    }, 1000);
 }
 
 function updateMapFromInputs() {
