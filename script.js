@@ -1003,6 +1003,7 @@ let navigationHistory = [];
 let isNavigatingBack = false;
 let lastGeocodeTime = 0;
 let geocodeTimeout = null;
+let addressGeocodeTimeout = null;
 const GEOCODE_MIN_INTERVAL = 1000;
 
 function navigateTo(state) {
@@ -1284,6 +1285,7 @@ function initEditPlaceMap(lat, lng) {
     
     const latInput = document.getElementById('edit-place-lat');
     const lngInput = document.getElementById('edit-place-lng');
+    const addressInput = document.getElementById('edit-place-address');
     
     if (latInput) {
         latInput.addEventListener('input', updateMapFromInputs);
@@ -1292,6 +1294,10 @@ function initEditPlaceMap(lat, lng) {
     if (lngInput) {
         lngInput.addEventListener('input', updateMapFromInputs);
         editPlaceInputHandlers.push({ element: lngInput, fn: updateMapFromInputs });
+    }
+    if (addressInput) {
+        addressInput.addEventListener('input', updateCoordsFromAddress);
+        editPlaceInputHandlers.push({ element: addressInput, fn: updateCoordsFromAddress });
     }
 }
 
@@ -1331,6 +1337,49 @@ async function reverseGeocode(lat, lng) {
     }
 }
 
+async function geocode(address) {
+    if (!address || address.trim() === '') return null;
+    
+    const now = Date.now();
+    const timeSinceLastCall = now - lastGeocodeTime;
+    
+    if (timeSinceLastCall < GEOCODE_MIN_INTERVAL) {
+        await new Promise(resolve => setTimeout(resolve, GEOCODE_MIN_INTERVAL - timeSinceLastCall));
+    }
+    
+    lastGeocodeTime = Date.now();
+    
+    try {
+        const encodedAddress = encodeURIComponent(address);
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1&addressdetails=1`, {
+            headers: {
+                'User-Agent': 'NYCApp/1.0',
+                'Referer': window.location.origin
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 429 || response.status === 403) {
+                throw new Error('Trop de requêtes. Veuillez patienter quelques instants.');
+            }
+            throw new Error('Erreur de réponse');
+        }
+        
+        const data = await response.json();
+        if (data && data.length > 0) {
+            return {
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon),
+                display_name: data[0].display_name
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Erreur geocoding:', error);
+        return null;
+    }
+}
+
 async function updateAddressFromCoords() {
     if (geocodeTimeout) {
         clearTimeout(geocodeTimeout);
@@ -1354,6 +1403,39 @@ async function updateAddressFromCoords() {
             addressInput.value = '';
         }
     }, 500);
+}
+
+async function updateCoordsFromAddress() {
+    if (addressGeocodeTimeout) {
+        clearTimeout(addressGeocodeTimeout);
+    }
+    
+    addressGeocodeTimeout = setTimeout(async () => {
+        const latInput = document.getElementById('edit-place-lat');
+        const lngInput = document.getElementById('edit-place-lng');
+        const addressInput = document.getElementById('edit-place-address');
+        
+        if (!latInput || !lngInput || !addressInput) return;
+        
+        const address = addressInput.value.trim();
+        
+        if (address && address !== 'Chargement...') {
+            const result = await geocode(address);
+            if (result) {
+                if (latInput) latInput.value = result.lat.toFixed(7);
+                if (lngInput) lngInput.value = result.lng.toFixed(7);
+                
+                if (editPlaceMap && editPlaceMarker) {
+                    editPlaceMarker.setLatLng([result.lat, result.lng]);
+                    editPlaceMap.setView([result.lat, result.lng], editPlaceMap.getZoom());
+                }
+                
+                if (addressInput.value !== result.display_name) {
+                    addressInput.value = result.display_name;
+                }
+            }
+        }
+    }, 1000);
 }
 
 function updateMapFromInputs() {
