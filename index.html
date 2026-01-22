@@ -147,8 +147,11 @@
             <div class="settings-header">
                 <h1>Paramètres</h1>
                 <button id="add-place-btn" class="add-place-btn">
+                    <svg class="location-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
                     <span class="add-icon">+</span>
-                    <span class="add-text">Ajouter un lieu</span>
                 </button>
             </div>
             <div id="places-list" class="places-list-container"></div>
@@ -156,7 +159,6 @@
 
         <div class="day-section" id="page-edit-place" style="display:none;">
             <h1 id="edit-place-title">Modifier un lieu</h1>
-            <button id="back-to-settings" class="back-btn">← Retour</button>
             <div class="edit-place-form">
                 <div class="form-group">
                     <label for="edit-place-name">Nom du lieu</label>

@@ -126,6 +126,7 @@ let currentMap = null;
 let currentUserPosition = null;
 let currentRouteLayer = null;
 let routeCalculatorLayer = null;
+let currentRouteDestination = null;
 let routeCalculatorActive = false;
 let legendActive = false;
 let currentTileLayer = null;
@@ -639,7 +640,7 @@ function drawRouteBetweenPlaces(startPlace, endPlace) {
         routeCalculatorLayer = null;
     }
 
-    const url = `https://router.project-osrm.org/route/v1/foot/${startPlace.lng},${startPlace.lat};${endPlace.lng},${endPlace.lat}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/foot/${startPlace.lng},${startPlace.lat};${endPlace.lng},${endPlace.lat}?overview=full&geometries=geojson&alternatives=true&steps=true`;
 
     fetch(url)
         .then(response => response.json())
@@ -764,6 +765,21 @@ function createPopupContent(placeName, placeLat, placeLng, placeId = null) {
         content += `<div style="text-align: center; font-size: 0.95em; margin-top: 3px; color: #666;">Temps de marche: ${walkingMinutes} min</div>`;
     }
     
+    const isRouteActive = currentRouteDestination && 
+        Math.abs(currentRouteDestination.lat - placeLat) < 0.0001 && 
+        Math.abs(currentRouteDestination.lng - placeLng) < 0.0001;
+    
+    const routeButtonBg = isRouteActive ? '#dc3545' : '#25D366';
+    const routeButtonIcon = isRouteActive 
+        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>`
+        : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+        </svg>`;
+    
     content += `<div style="display: flex; gap: 8px; margin-top: 12px; width: 100%;">
         <button onclick="showPlaceInfo(${placeId !== null ? placeId : 'null'}, '${escapedName}', ${placeLat}, ${placeLng})" 
                 class="popup-btn popup-btn-info"
@@ -776,11 +792,8 @@ function createPopupContent(placeName, placeLat, placeLng, placeId = null) {
         </button>
         <button onclick="showRoute(${placeLat}, ${placeLng}, '${escapedName}')" 
                 class="popup-btn popup-btn-route"
-                style="flex: 1; background: #25D366; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9em; font-weight: 500;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-            </svg>
+                style="flex: 1; background: ${routeButtonBg}; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9em; font-weight: 500;">
+            ${routeButtonIcon}
         </button>
     </div>`;
     
@@ -801,6 +814,18 @@ window.showRoute = function(destLat, destLng, placeName) {
         return;
     }
 
+    const isSameDestination = currentRouteDestination && 
+        Math.abs(currentRouteDestination.lat - destLat) < 0.0001 && 
+        Math.abs(currentRouteDestination.lng - destLng) < 0.0001;
+
+    if (currentRouteLayer && isSameDestination) {
+        currentMap.removeLayer(currentRouteLayer);
+        currentRouteLayer = null;
+        currentRouteDestination = null;
+        updateAllPopups();
+        return;
+    }
+
     if (currentRouteLayer) {
         currentMap.removeLayer(currentRouteLayer);
         currentRouteLayer = null;
@@ -809,7 +834,7 @@ window.showRoute = function(destLat, destLng, placeName) {
     const startLat = currentUserPosition.lat;
     const startLng = currentUserPosition.lng;
 
-    const url = `https://router.project-osrm.org/route/v1/foot/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/foot/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&alternatives=true&steps=true`;
 
     fetch(url)
         .then(response => response.json())
@@ -823,6 +848,9 @@ window.showRoute = function(destLat, destLng, placeName) {
                     weight: 4,
                     opacity: 0.7
                 }).addTo(currentMap);
+
+                currentRouteDestination = { lat: destLat, lng: destLng };
+                updateAllPopups();
 
                 const bounds = currentRouteLayer.getBounds();
                 currentMap.fitBounds(bounds, { padding: [50, 50] });
@@ -1454,7 +1482,7 @@ function showAddressSuggestions(suggestions) {
             const addressInput = document.getElementById('edit-place-address');
             if (addressInput) {
                 addressInput.value = suggestion.display_name;
-                addressInput.focus();
+                addressInput.blur();
             }
             updateCoordsFromAddress(suggestion.lat, suggestion.lng);
             suggestionsContainer.style.display = 'none';
@@ -1515,6 +1543,7 @@ async function searchFirstAddress() {
     if (suggestions.length > 0) {
         const first = suggestions[0];
         addressInput.value = first.display_name;
+        addressInput.blur();
         updateCoordsFromAddress(first.lat, first.lng);
         
         const suggestionsContainer = document.getElementById('address-suggestions');
@@ -1713,15 +1742,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const backToSettingsBtn = document.getElementById('back-to-settings');
-    if (backToSettingsBtn) {
-        backToSettingsBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            isNavigatingBack = true;
-            history.back();
-            isNavigatingBack = false;
-        });
-    }
 
     const editPlaceSaveBtn = document.getElementById('edit-place-save');
     if (editPlaceSaveBtn) {
