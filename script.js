@@ -1,5 +1,19 @@
 const API_URL = 'https://nycapi.vercel.app/api/lieux';
 
+function showLoader() {
+    const loader = document.getElementById('api-loader');
+    if (loader) {
+        loader.classList.add('active');
+    }
+}
+
+function hideLoader() {
+    const loader = document.getElementById('api-loader');
+    if (loader) {
+        loader.classList.remove('active');
+    }
+}
+
 function convertApiToApp(apiPlace) {
     return {
         id: apiPlace.id,
@@ -21,6 +35,7 @@ function convertAppToApi(appPlace) {
 }
 
 async function getPlaces() {
+    showLoader();
     try {
         const response = await fetch(API_URL);
         if (!response.ok) throw new Error('Erreur lors du chargement');
@@ -34,10 +49,13 @@ async function getPlaces() {
     } catch (error) {
         console.error('Erreur API getPlaces:', error);
         return {};
+    } finally {
+        hideLoader();
     }
 }
 
 async function createPlace(placeData) {
+    showLoader();
     try {
         const apiData = convertAppToApi(placeData);
         const response = await fetch(API_URL, {
@@ -51,10 +69,13 @@ async function createPlace(placeData) {
     } catch (error) {
         console.error('Erreur API createPlace:', error);
         throw error;
+    } finally {
+        hideLoader();
     }
 }
 
 async function updatePlace(id, placeData) {
+    showLoader();
     try {
         const apiData = convertAppToApi(placeData);
         const response = await fetch(`${API_URL}/${id}`, {
@@ -68,10 +89,13 @@ async function updatePlace(id, placeData) {
     } catch (error) {
         console.error('Erreur API updatePlace:', error);
         throw error;
+    } finally {
+        hideLoader();
     }
 }
 
 async function deletePlaceApi(id) {
+    showLoader();
     try {
         const response = await fetch(`${API_URL}/${id}`, {
             method: 'DELETE'
@@ -81,6 +105,8 @@ async function deletePlaceApi(id) {
     } catch (error) {
         console.error('Erreur API deletePlace:', error);
         throw error;
+    } finally {
+        hideLoader();
     }
 }
 
@@ -1075,6 +1101,10 @@ function showPage(pageId) {
 
 function showSettingsPage() {
     showPage('page-settings');
+    const placesSearchInput = document.getElementById('places-search-input');
+    if (placesSearchInput) {
+        placesSearchInput.value = '';
+    }
     renderPlacesList();
 }
 
@@ -1082,15 +1112,22 @@ function navigateToSettings() {
     navigateTo({ type: 'page', id: 'settings' });
 }
 
-function renderPlacesList() {
+function renderPlacesList(filterText = '') {
     const placesList = document.getElementById('places-list');
     if (!placesList) return;
     
     placesList.innerHTML = '';
     const sortedPlaces = Object.keys(places).map(id => parseInt(id)).sort((a, b) => a - b);
+    const searchTerm = filterText.toLowerCase().trim();
     
     sortedPlaces.forEach(id => {
         const place = places[id];
+        const placeName = place.name.toLowerCase();
+        
+        if (searchTerm && !placeName.includes(searchTerm)) {
+            return;
+        }
+        
         const item = document.createElement('div');
         item.className = 'place-item';
         item.innerHTML = `
@@ -1147,7 +1184,9 @@ async function deletePlace(id) {
             createLegend();
         }
         
-        renderPlacesList();
+        const placesSearchInput = document.getElementById('places-search-input');
+        const currentFilter = placesSearchInput ? placesSearchInput.value : '';
+        renderPlacesList(currentFilter);
         updateDayPlacesLists();
     } catch (error) {
         alert('Erreur lors de la suppression: ' + error.message);
@@ -1742,6 +1781,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    const placesSearchInput = document.getElementById('places-search-input');
+    if (placesSearchInput) {
+        placesSearchInput.addEventListener('input', (e) => {
+            const filterText = e.target.value;
+            renderPlacesList(filterText);
+        });
+    }
 
     const editPlaceSaveBtn = document.getElementById('edit-place-save');
     if (editPlaceSaveBtn) {

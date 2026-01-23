@@ -154,6 +154,9 @@
                     <span class="add-icon">+</span>
                 </button>
             </div>
+            <div class="places-search-container">
+                <input type="text" id="places-search-input" class="places-search-input" placeholder="Rechercher un lieu...">
+            </div>
             <div id="places-list" class="places-list-container"></div>
         </div>
 
@@ -208,6 +211,10 @@
             </div>
         </div>
     </main>
+
+    <div id="api-loader" class="api-loader">
+        <div class="loader-spinner"></div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="script.js"></script>
