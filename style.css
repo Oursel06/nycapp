@@ -644,23 +644,6 @@ h2 {
     user-select: none;
 }
 
-.legend-zoom-btn {
-    background: whitesmoke;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: background 0.3s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 28px;
-    margin-left: 0.5rem;
-}
-
 @media (max-width: 968px) {
     .menu-toggle {
         display: block;
@@ -1212,6 +1195,20 @@ select.form-input {
 #edit-place-map {
     height: 400px;
     margin-top: 0;
+}
+
+.coords-labels {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.coord-label {
+    font-size: 14px;
+    color: #666;
 }
 
 @media (max-width: 968px) {

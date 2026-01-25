@@ -161,7 +161,10 @@
         </div>
 
         <div class="day-section" id="page-edit-place" style="display:none;">
-            <h1 id="edit-place-title">Modifier un lieu</h1>
+            <div class="settings-header">
+                <h1 id="edit-place-title">Modifier un lieu</h1>
+                <button id="edit-place-save" class="add-place-btn">Sauvegarder</button>
+            </div>
             <div class="edit-place-form">
                 <div class="form-group">
                     <label for="edit-place-name">Nom du lieu</label>
@@ -179,16 +182,6 @@
                         <option value="1702">17/02</option>
                     </select>
                 </div>
-                <div class="form-group form-group-coords">
-                    <div class="form-group-inline">
-                        <label for="edit-place-lat">Latitude</label>
-                        <input type="number" id="edit-place-lat" class="form-input form-input-small" step="any" placeholder="Latitude">
-                    </div>
-                    <div class="form-group-inline">
-                        <label for="edit-place-lng">Longitude</label>
-                        <input type="number" id="edit-place-lng" class="form-input form-input-small" step="any" placeholder="Longitude">
-                    </div>
-                </div>
                 <div class="form-group">
                     <label for="edit-place-address">Adresse</label>
                     <div class="address-input-wrapper">
@@ -204,9 +197,10 @@
                 </div>
                 <div class="form-group">
                     <div id="edit-place-map" class="map-container"></div>
-                </div>
-                <div class="form-group">
-                    <button id="edit-place-save" class="save-btn">Sauvegarder</button>
+                    <div class="coords-labels">
+                        <span id="edit-place-lat-label" class="coord-label">Latitude : --</span>
+                        <span id="edit-place-lng-label" class="coord-label">Longitude : --</span>
+                    </div>
                 </div>
             </div>
         </div>

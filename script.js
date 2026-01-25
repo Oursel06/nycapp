@@ -364,6 +364,7 @@ function createLegend() {
         checkbox.dataset.placeId = id;
         checkbox.checked = savedStates[id] !== undefined ? savedStates[id] : true;
         checkbox.addEventListener('change', (e) => {
+            e.stopPropagation();
             const placeId = parseInt(e.target.dataset.placeId);
             const isChecked = e.target.checked;
             togglePlace(placeId, isChecked);
@@ -373,10 +374,13 @@ function createLegend() {
             states[placeId] = isChecked;
             localStorage.setItem('legendCheckboxStates', JSON.stringify(states));
         });
+        checkbox.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
 
-        const label = document.createElement('label');
-        label.htmlFor = checkbox.id;
+        const label = document.createElement('div');
         label.style.flex = '1';
+        label.style.cursor = 'pointer';
         
         const nameSpan = document.createElement('span');
         nameSpan.textContent = placeName;
@@ -399,13 +403,7 @@ function createLegend() {
             }
         }
 
-        const zoomButton = document.createElement('button');
-        zoomButton.className = 'legend-zoom-btn';
-        zoomButton.type = 'button';
-        zoomButton.innerHTML = '🔍';
-        zoomButton.title = 'Zoomer sur ce lieu';
-        zoomButton.addEventListener('click', (e) => {
-            e.stopPropagation();
+        function performZoom() {
             zoomToPlace(id);
             const legend = document.getElementById('legend');
             if (legend && legend.classList.contains('active')) {
@@ -432,11 +430,23 @@ function createLegend() {
                     showRouteCalculatorBtn.style.display = 'block';
                 }
             }
+        }
+
+        label.addEventListener('click', (e) => {
+            e.stopPropagation();
+            performZoom();
+        });
+
+        item.addEventListener('click', (e) => {
+            if (e.target === checkbox || checkbox.contains(e.target)) {
+                return;
+            }
+            e.stopPropagation();
+            performZoom();
         });
 
         item.appendChild(checkbox);
         item.appendChild(label);
-        item.appendChild(zoomButton);
         legendItems.appendChild(item);
         
         togglePlace(id, checkbox.checked);
@@ -791,6 +801,13 @@ function createPopupContent(placeName, placeLat, placeLng, placeId = null) {
         content += `<div style="text-align: center; font-size: 0.95em; margin-top: 3px; color: #666;">Temps de marche: ${walkingMinutes} min</div>`;
     }
     
+    if (placeId !== null && places[placeId] && places[placeId].day) {
+        const dayStr = places[placeId].day;
+        const day = dayStr.substring(0, 2);
+        const month = dayStr.substring(2, 4);
+        content += `<div style="text-align: center; font-size: 0.95em; margin-top: 3px; color: #666;">Prévu le ${day}/${month}</div>`;
+    }
+    
     const isRouteActive = currentRouteDestination && 
         Math.abs(currentRouteDestination.lat - placeLat) < 0.0001 && 
         Math.abs(currentRouteDestination.lng - placeLng) < 0.0001;
@@ -1117,7 +1134,7 @@ function renderPlacesList(filterText = '') {
     if (!placesList) return;
     
     placesList.innerHTML = '';
-    const sortedPlaces = Object.keys(places).map(id => parseInt(id)).sort((a, b) => a - b);
+    const sortedPlaces = Object.keys(places).sort((a, b) => places[a].name.localeCompare(places[b].name)).map(id => parseInt(id));
     const searchTerm = filterText.toLowerCase().trim();
     
     sortedPlaces.forEach(id => {
@@ -1193,6 +1210,13 @@ async function deletePlace(id) {
     }
 }
 
+function updateCoordsLabels(lat, lng) {
+    const latLabel = document.getElementById('edit-place-lat-label');
+    const lngLabel = document.getElementById('edit-place-lng-label');
+    if (latLabel) latLabel.textContent = `Latitude : ${lat.toFixed(7)}`;
+    if (lngLabel) lngLabel.textContent = `Longitude : ${lng.toFixed(7)}`;
+}
+
 function showEditPlacePage(id) {
     currentEditPlaceId = id;
     showPage('page-edit-place');
@@ -1200,8 +1224,6 @@ function showEditPlacePage(id) {
     
     const title = document.getElementById('edit-place-title');
     const nameInput = document.getElementById('edit-place-name');
-    const latInput = document.getElementById('edit-place-lat');
-    const lngInput = document.getElementById('edit-place-lng');
     const daySelect = document.getElementById('edit-place-day');
     const saveBtn = document.getElementById('edit-place-save');
     
@@ -1210,26 +1232,24 @@ function showEditPlacePage(id) {
         if (place) {
             if (title) title.textContent = place.name;
             if (nameInput) nameInput.value = place.name;
-            if (latInput) latInput.value = place.lat;
-            if (lngInput) lngInput.value = place.lng;
             if (daySelect) daySelect.value = place.day || '';
             if (saveBtn) saveBtn.textContent = 'Sauvegarder';
             setTimeout(async () => {
                 initEditPlaceMap(place.lat, place.lng);
+                updateCoordsLabels(place.lat, place.lng);
                 await updateAddressFromCoords();
             }, 100);
         }
     } else {
         if (title) title.textContent = 'Ajouter un lieu';
         if (nameInput) nameInput.value = '';
-        if (latInput) latInput.value = '';
-        if (lngInput) lngInput.value = '';
         if (daySelect) daySelect.value = '';
         if (saveBtn) saveBtn.textContent = 'Ajouter';
         const addressInput = document.getElementById('edit-place-address');
         if (addressInput) addressInput.value = '';
         setTimeout(async () => {
             initEditPlaceMap(40.7128, -74.0060);
+            updateCoordsLabels(40.7128, -74.0060);
             await updateAddressFromCoords();
         }, 100);
     }
@@ -1333,10 +1353,7 @@ function initEditPlaceMap(lat, lng) {
     
     editPlaceMarker.on('dragend', async () => {
         const position = editPlaceMarker.getLatLng();
-        const latInput = document.getElementById('edit-place-lat');
-        const lngInput = document.getElementById('edit-place-lng');
-        if (latInput) latInput.value = position.lat.toFixed(7);
-        if (lngInput) lngInput.value = position.lng.toFixed(7);
+        updateCoordsLabels(position.lat, position.lng);
         await updateAddressFromCoords();
     });
     
@@ -1344,24 +1361,9 @@ function initEditPlaceMap(lat, lng) {
         const newLat = e.latlng.lat;
         const newLng = e.latlng.lng;
         editPlaceMarker.setLatLng([newLat, newLng]);
-        const latInput = document.getElementById('edit-place-lat');
-        const lngInput = document.getElementById('edit-place-lng');
-        if (latInput) latInput.value = newLat.toFixed(7);
-        if (lngInput) lngInput.value = newLng.toFixed(7);
+        updateCoordsLabels(newLat, newLng);
         await updateAddressFromCoords();
     });
-    
-    const latInput = document.getElementById('edit-place-lat');
-    const lngInput = document.getElementById('edit-place-lng');
-    
-    if (latInput) {
-        latInput.addEventListener('input', updateMapFromInputs);
-        editPlaceInputHandlers.push({ element: latInput, fn: updateMapFromInputs });
-    }
-    if (lngInput) {
-        lngInput.addEventListener('input', updateMapFromInputs);
-        editPlaceInputHandlers.push({ element: lngInput, fn: updateMapFromInputs });
-    }
     
     const addressInput = document.getElementById('edit-place-address');
     if (addressInput) {
@@ -1534,15 +1536,10 @@ function showAddressSuggestions(suggestions) {
 }
 
 function updateCoordsFromAddress(lat, lng) {
-    const latInput = document.getElementById('edit-place-lat');
-    const lngInput = document.getElementById('edit-place-lng');
-    
-    if (latInput) latInput.value = lat.toFixed(7);
-    if (lngInput) lngInput.value = lng.toFixed(7);
-    
     if (editPlaceMap && editPlaceMarker) {
         editPlaceMarker.setLatLng([lat, lng]);
         editPlaceMap.setView([lat, lng], editPlaceMap.getZoom());
+        updateCoordsLabels(lat, lng);
     }
 }
 
@@ -1600,14 +1597,12 @@ async function updateAddressFromCoords() {
     geocodeTimeout = setTimeout(async () => {
         if (isSelectingSuggestion) return;
         
-        const latInput = document.getElementById('edit-place-lat');
-        const lngInput = document.getElementById('edit-place-lng');
         const addressInput = document.getElementById('edit-place-address');
+        if (!addressInput || !editPlaceMarker) return;
         
-        if (!latInput || !lngInput || !addressInput) return;
-        
-        const lat = parseFloat(latInput.value);
-        const lng = parseFloat(lngInput.value);
+        const position = editPlaceMarker.getLatLng();
+        const lat = position.lat;
+        const lng = position.lng;
         
         if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
             addressInput.value = 'Chargement...';
@@ -1619,34 +1614,15 @@ async function updateAddressFromCoords() {
     }, 500);
 }
 
-function updateMapFromInputs() {
-    if (!editPlaceMap || !editPlaceMarker) return;
-    
-    const latInput = document.getElementById('edit-place-lat');
-    const lngInput = document.getElementById('edit-place-lng');
-    
-    if (!latInput || !lngInput) return;
-    
-    const lat = parseFloat(latInput.value);
-    const lng = parseFloat(lngInput.value);
-    
-    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        editPlaceMarker.setLatLng([lat, lng]);
-        editPlaceMap.setView([lat, lng], editPlaceMap.getZoom());
-        updateAddressFromCoords();
-    }
-}
-
 async function savePlace() {
     const nameInput = document.getElementById('edit-place-name');
-    const latInput = document.getElementById('edit-place-lat');
-    const lngInput = document.getElementById('edit-place-lng');
     
-    if (!nameInput || !latInput || !lngInput) return;
+    if (!nameInput || !editPlaceMarker) return;
     
     const name = nameInput.value.trim();
-    const lat = parseFloat(latInput.value);
-    const lng = parseFloat(lngInput.value);
+    const position = editPlaceMarker.getLatLng();
+    const lat = position.lat;
+    const lng = position.lng;
     
     if (!name) {
         alert('Le nom du lieu est requis');
