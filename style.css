@@ -1112,12 +1112,12 @@ select.form-input {
 .address-input-wrapper {
     display: flex;
     gap: 0.5rem;
-    align-items: stretch;
+    align-items: center;
 }
 
 .form-input-address {
     flex: 1;
-    min-height: 48px;
+    height: 100px;
     padding: 0.875rem;
 }
 
@@ -1133,6 +1133,8 @@ select.form-input {
     justify-content: center;
     transition: background 0.3s;
     flex-shrink: 0;
+    height: 40px;
+    max-height: 40px;
 }
 
 .search-address-btn:hover {

@@ -34,8 +34,10 @@ function convertAppToApi(appPlace) {
     };
 }
 
-async function getPlaces() {
-    showLoader();
+async function getPlaces(showLoaderIndicator = true) {
+    if (showLoaderIndicator) {
+        showLoader();
+    }
     try {
         const response = await fetch(API_URL);
         if (!response.ok) throw new Error('Erreur lors du chargement');
@@ -48,9 +50,11 @@ async function getPlaces() {
         return placesObj;
     } catch (error) {
         console.error('Erreur API getPlaces:', error);
-        return {};
+        return null;
     } finally {
-        hideLoader();
+        if (showLoaderIndicator) {
+            hideLoader();
+        }
     }
 }
 
@@ -112,6 +116,158 @@ async function deletePlaceApi(id) {
 
 async function loadPlaces() {
     return await getPlaces();
+}
+
+let pollingInterval = null;
+let isReloading = false;
+
+function placesAreEqual(places1, places2) {
+    const ids1 = new Set(Object.keys(places1).map(id => parseInt(id)));
+    const ids2 = new Set(Object.keys(places2).map(id => parseInt(id)));
+    
+    if (ids1.size !== ids2.size) return false;
+    for (const id of ids1) {
+        if (!ids2.has(id)) return false;
+    }
+    
+    for (const id of ids1) {
+        const p1 = places1[id];
+        const p2 = places2[id];
+        if (p1.name !== p2.name || 
+            p1.lat !== p2.lat || 
+            p1.lng !== p2.lng || 
+            p1.day !== p2.day) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+async function checkForUpdates() {
+    if (currentEditPlaceId !== null || isReloading) {
+        return;
+    }
+
+    try {
+        const newPlaces = await getPlaces(false);
+        
+        if (newPlaces === null) {
+            return;
+        }
+        
+        if (!placesAreEqual(places, newPlaces)) {
+            await reloadPlacesAndUpdateUI(newPlaces);
+        }
+    } catch (error) {
+        console.error('Erreur lors de la vérification des mises à jour:', error);
+    }
+}
+
+async function reloadPlacesAndUpdateUI(newPlaces) {
+    if (isReloading) return;
+    if (!newPlaces || typeof newPlaces !== 'object') return;
+    isReloading = true;
+    
+    try {
+        const oldPlaceIds = new Set(Object.keys(places).map(id => parseInt(id)));
+        const newPlaceIds = new Set(Object.keys(newPlaces).map(id => parseInt(id)));
+        
+        const deletedIds = [...oldPlaceIds].filter(id => !newPlaceIds.has(id));
+        
+        const addedOrModifiedIds = [...newPlaceIds].filter(id => {
+            if (!oldPlaceIds.has(id)) return true;
+            const oldPlace = places[id];
+            const newPlace = newPlaces[id];
+            return oldPlace.name !== newPlace.name || 
+                   oldPlace.lat !== newPlace.lat || 
+                   oldPlace.lng !== newPlace.lng || 
+                   oldPlace.day !== newPlace.day;
+        });
+        
+        places = newPlaces;
+        
+        deletedIds.forEach(id => {
+            if (maps['all'] && allMarkers[id]) {
+                maps['all'].removeLayer(allMarkers[id]);
+                delete allMarkers[id];
+            }
+            Object.keys(dayMarkers).forEach(day => {
+                if (dayMarkers[day] && dayMarkers[day][id] && maps[day]) {
+                    maps[day].removeLayer(dayMarkers[day][id]);
+                    delete dayMarkers[day][id];
+                }
+            });
+        });
+        
+        addedOrModifiedIds.forEach(id => {
+            const place = places[id];
+            if (!place) return;
+            
+            if (maps['all']) {
+                if (allMarkers[id]) {
+                    allMarkers[id].setLatLng([place.lat, place.lng]);
+                    allMarkers[id].setPopupContent(createPopupContent(place.name, place.lat, place.lng, id));
+                } else {
+                    const marker = L.marker([place.lat, place.lng])
+                        .addTo(maps['all'])
+                        .bindPopup(createPopupContent(place.name, place.lat, place.lng, id));
+                    allMarkers[id] = marker;
+                }
+            }
+            
+            Object.keys(dayMarkers).forEach(day => {
+                if (day === 'all') return;
+                const dayPlacesList = getPlacesByDay(day);
+                if (dayPlacesList.includes(id)) {
+                    if (maps[day]) {
+                        if (dayMarkers[day][id]) {
+                            dayMarkers[day][id].setLatLng([place.lat, place.lng]);
+                            dayMarkers[day][id].setPopupContent(createPopupContent(place.name, place.lat, place.lng, id));
+                        } else {
+                            const marker = L.marker([place.lat, place.lng])
+                                .addTo(maps[day])
+                                .bindPopup(createPopupContent(place.name, place.lat, place.lng, id));
+                            dayMarkers[day][id] = marker;
+                        }
+                    }
+                } else {
+                    if (dayMarkers[day] && dayMarkers[day][id] && maps[day]) {
+                        maps[day].removeLayer(dayMarkers[day][id]);
+                        delete dayMarkers[day][id];
+                    }
+                }
+            });
+        });
+        
+        if (maps['all'] && legendActive) {
+            createLegend();
+        }
+        
+        const placesSearchInput = document.getElementById('places-search-input');
+        const currentFilter = placesSearchInput ? placesSearchInput.value : '';
+        renderPlacesList(currentFilter);
+        updateDayPlacesLists();
+        
+    } catch (error) {
+        console.error('Erreur lors du rechargement des lieux:', error);
+    } finally {
+        isReloading = false;
+    }
+}
+
+function startPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+    pollingInterval = setInterval(checkForUpdates, 3000);
+}
+
+function stopPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
 }
 
 let places = {};
@@ -1976,5 +2132,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             applyState(initialState);
         }
         isNavigatingBack = false;
+    });
+    
+    startPolling();
+    
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopPolling();
+        } else {
+            startPolling();
+            checkForUpdates();
+        }
     });
 });
