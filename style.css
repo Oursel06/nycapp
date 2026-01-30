@@ -8,6 +8,10 @@
     display: none !important;
 }
 
+.leaflet-container {
+    -webkit-touch-callout: none;
+}
+
 .leaflet-popup-content-wrapper {
     padding: 12px !important;
     min-width: 200px !important;

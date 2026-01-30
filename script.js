@@ -441,12 +441,14 @@ function setupLongPressForMap(mapKey) {
     if (!map) return;
 
     let longPressTimer = null;
+    let touchStartPos = null;
 
     const clearLongPress = () => {
         if (longPressTimer) {
             clearTimeout(longPressTimer);
             longPressTimer = null;
         }
+        touchStartPos = null;
     };
 
     const onPressStart = (e) => {
@@ -455,9 +457,11 @@ function setupLongPressForMap(mapKey) {
         }
         if (longPressTimer) return;
         const latlng = e.latlng;
+        touchStartPos = e.originalEvent.touches ? { x: e.originalEvent.touches[0].clientX, y: e.originalEvent.touches[0].clientY } : null;
         longPressTimer = setTimeout(() => {
             addReferenceMarker(mapKey, latlng.lat, latlng.lng);
             longPressTimer = null;
+            touchStartPos = null;
         }, LONG_PRESS_DURATION);
     };
 
@@ -465,12 +469,29 @@ function setupLongPressForMap(mapKey) {
         clearLongPress();
     };
 
+    const onTouchMove = (e) => {
+        if (!touchStartPos || !e.originalEvent.touches) return;
+        const dx = e.originalEvent.touches[0].clientX - touchStartPos.x;
+        const dy = e.originalEvent.touches[0].clientY - touchStartPos.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 10) {
+            clearLongPress();
+        }
+    };
+
+    map.on('contextmenu', (e) => {
+        e.originalEvent.preventDefault();
+        addReferenceMarker(mapKey, e.latlng.lat, e.latlng.lng);
+    });
+
     map.on('mousedown', onPressStart);
     map.on('mouseup', onPressEnd);
-    map.on('mouseout', onPressEnd);
+    if (!L.Browser.touch) {
+        map.on('mouseout', onPressEnd);
+    }
     map.on('touchstart', onPressStart, { passive: true });
     map.on('touchend', onPressEnd);
     map.on('touchcancel', onPressEnd);
+    map.on('touchmove', onTouchMove, { passive: true });
 }
 
 function initMap(day) {
@@ -1037,7 +1058,7 @@ function calculateWalkingTime(distanceMeters) {
     return Math.ceil(timeSeconds / 60);
 }
 
-function createPopupContent(placeName, placeLat, placeLng, placeId = null, hideInfoButton = false) {
+function createPopupContent(placeName, placeLat, placeLng, placeId = null, isReferenceMarker = false) {
     const escapedName = placeName.replace(/'/g, "\\'");
     let content = `<div style="text-align: center; padding: 8px 0;"><strong style="font-size: 1.1em;">${placeName}</strong></div>`;
     
@@ -1077,15 +1098,15 @@ function createPopupContent(placeName, placeLat, placeLng, placeId = null, hideI
             <circle cx="12" cy="10" r="3"></circle>
         </svg>`;
     
-    const infoButtonHtml = hideInfoButton ? '' : `
+    const infoButtonIcon = isReferenceMarker
+        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg><span style="font-size: 1.1em; font-weight: bold;">+</span>`
+        : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+    
+    const infoButtonHtml = `
         <button onclick="showPlaceInfo(${placeId !== null ? placeId : 'null'}, '${escapedName}', ${placeLat}, ${placeLng})" 
                 class="popup-btn popup-btn-info"
                 style="flex: 1; background: #007AFF; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9em; font-weight: 500;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="16" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
+            ${infoButtonIcon}
         </button>`;
     
     content += `<div style="display: flex; gap: 8px; margin-top: 12px; width: 100%;">
@@ -1103,6 +1124,8 @@ function createPopupContent(placeName, placeLat, placeLng, placeId = null, hideI
 window.showPlaceInfo = function(placeId, placeName, placeLat, placeLng) {
     if (placeId !== null && places[placeId]) {
         navigateToEditPlace(placeId);
+    } else if (placeName === 'Repère personnalisé') {
+        navigateToEditPlaceForReference(placeLat, placeLng);
     } else {
         alert(`Informations du lieu:\nNom: ${placeName}\nLatitude: ${placeLat}\nLongitude: ${placeLng}\n\nCe lieu n'est pas dans votre liste.`);
     }
@@ -1356,7 +1379,7 @@ function applyState(state) {
         if (state.id === 'settings') {
             showSettingsPage();
         } else if (state.id === 'edit-place') {
-            showEditPlacePage(state.placeId || null);
+            showEditPlacePage(state.placeId || null, state.referenceMarker);
         }
     }
 }
@@ -1480,7 +1503,7 @@ function updateCoordsLabels(lat, lng) {
     if (lngLabel) lngLabel.textContent = `Longitude : ${lng.toFixed(7)}`;
 }
 
-function showEditPlacePage(id) {
+function showEditPlacePage(id, referenceMarkerData = null) {
     currentEditPlaceId = id;
     showPage('page-edit-place');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1490,7 +1513,19 @@ function showEditPlacePage(id) {
     const daySelect = document.getElementById('edit-place-day');
     const saveBtn = document.getElementById('edit-place-save');
     
-    if (id !== null && id !== undefined) {
+    if (referenceMarkerData) {
+        if (title) title.textContent = 'Repère personnalisé';
+        if (nameInput) nameInput.value = 'Repère personnalisé';
+        if (daySelect) daySelect.value = '';
+        if (saveBtn) saveBtn.textContent = 'Ajouter';
+        const addressInput = document.getElementById('edit-place-address');
+        if (addressInput) addressInput.value = '';
+        setTimeout(async () => {
+            initEditPlaceMap(referenceMarkerData.lat, referenceMarkerData.lng);
+            updateCoordsLabels(referenceMarkerData.lat, referenceMarkerData.lng);
+            await updateAddressFromCoords();
+        }, 100);
+    } else if (id !== null && id !== undefined) {
         const place = places[id];
         if (place) {
             if (title) title.textContent = place.name;
@@ -1520,6 +1555,10 @@ function showEditPlacePage(id) {
 
 function navigateToEditPlace(id) {
     navigateTo({ type: 'page', id: 'edit-place', placeId: id });
+}
+
+function navigateToEditPlaceForReference(lat, lng) {
+    navigateTo({ type: 'page', id: 'edit-place', placeId: null, referenceMarker: { name: 'Repère personnalisé', lat, lng } });
 }
 
 function showAddPlacePage() {
