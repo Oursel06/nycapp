@@ -302,6 +302,7 @@ function getPlacesByDay(day) {
 const maps = {};
 const allMarkers = {};
 const dayMarkers = {};
+const referenceMarkers = {};
 let userLocationMarker = null;
 let userLocationWatchId = null;
 let currentMap = null;
@@ -375,7 +376,96 @@ const createRedIcon = () => {
     });
 };
 
+const createHotelIcon = () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="28" viewBox="0 0 24 28">
+        <path fill="#8B4513" d="M12 0L0 8v20h24V8L12 0z"/>
+        <path fill="#A0522D" d="M12 2l9 6v18H3V8l9-6z"/>
+        <rect fill="#DEB887" x="9" y="11" width="6" height="10"/>
+        <rect fill="#8B4513" x="10" y="14" width="1.5" height="2"/>
+        <rect fill="#8B4513" x="12.5" y="14" width="1.5" height="2"/>
+    </svg>`;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    return L.icon({
+        iconUrl: url,
+        iconSize: [24, 28],
+        iconAnchor: [12, 28],
+        popupAnchor: [0, -28]
+    });
+};
+
 const redIcon = createRedIcon();
+const hotelIcon = createHotelIcon();
+
+const LONG_PRESS_DURATION = 400;
+
+function addReferenceMarker(mapKey, lat, lng) {
+    const map = maps[mapKey];
+    if (!map) return;
+
+    if (!referenceMarkers[mapKey]) {
+        referenceMarkers[mapKey] = [];
+    }
+
+    let routeWasToOldMarker = false;
+    referenceMarkers[mapKey].forEach(oldMarker => {
+        const oldLatLng = oldMarker.getLatLng();
+        if (currentRouteDestination &&
+            Math.abs(currentRouteDestination.lat - oldLatLng.lat) < 0.0001 &&
+            Math.abs(currentRouteDestination.lng - oldLatLng.lng) < 0.0001) {
+            routeWasToOldMarker = true;
+        }
+        map.removeLayer(oldMarker);
+    });
+    referenceMarkers[mapKey] = [];
+
+    const marker = L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(createPopupContent('Repère personnalisé', lat, lng, null, true));
+
+    referenceMarkers[mapKey].push(marker);
+
+    if (routeWasToOldMarker && currentUserPosition && map === currentMap) {
+        showRoute(lat, lng, 'Repère personnalisé');
+    }
+}
+
+function setupLongPressForMap(mapKey) {
+    const map = maps[mapKey];
+    if (!map) return;
+
+    let longPressTimer = null;
+
+    const clearLongPress = () => {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    };
+
+    const onPressStart = (e) => {
+        if (e.originalEvent && e.originalEvent.button !== undefined && e.originalEvent.button !== 0) {
+            return;
+        }
+        if (longPressTimer) return;
+        const latlng = e.latlng;
+        longPressTimer = setTimeout(() => {
+            addReferenceMarker(mapKey, latlng.lat, latlng.lng);
+            longPressTimer = null;
+        }, LONG_PRESS_DURATION);
+    };
+
+    const onPressEnd = () => {
+        clearLongPress();
+    };
+
+    map.on('mousedown', onPressStart);
+    map.on('mouseup', onPressEnd);
+    map.on('mouseout', onPressEnd);
+    map.on('touchstart', onPressStart, { passive: true });
+    map.on('touchend', onPressEnd);
+    map.on('touchcancel', onPressEnd);
+}
 
 function initMap(day) {
     const mapId = `map-${day}`;
@@ -423,7 +513,7 @@ function initMap(day) {
         }
     });
 
-    const hotelMarker = L.marker([hotel.lat, hotel.lng], { icon: redIcon })
+    const hotelMarker = L.marker([hotel.lat, hotel.lng], { icon: hotelIcon })
         .addTo(map)
         .bindPopup(createPopupContent(hotel.name, hotel.lat, hotel.lng, null));
 
@@ -435,6 +525,7 @@ function initMap(day) {
 
     maps[day] = map;
     currentMap = map;
+    setupLongPressForMap(day);
     startGPSLocation();
 }
 
@@ -474,7 +565,7 @@ function initAllMap() {
         }
     });
 
-    const hotelMarker = L.marker([hotel.lat, hotel.lng], { icon: redIcon })
+    const hotelMarker = L.marker([hotel.lat, hotel.lng], { icon: hotelIcon })
         .addTo(map)
         .bindPopup(createPopupContent(hotel.name, hotel.lat, hotel.lng, null));
     allMarkers[hotel.name] = hotelMarker;
@@ -487,6 +578,7 @@ function initAllMap() {
 
     maps['all'] = map;
     currentMap = map;
+    setupLongPressForMap('all');
     startGPSLocation();
     
     setTimeout(() => {
@@ -939,7 +1031,7 @@ function calculateWalkingTime(distanceMeters) {
     return Math.ceil(timeSeconds / 60);
 }
 
-function createPopupContent(placeName, placeLat, placeLng, placeId = null) {
+function createPopupContent(placeName, placeLat, placeLng, placeId = null, hideInfoButton = false) {
     const escapedName = placeName.replace(/'/g, "\\'");
     let content = `<div style="text-align: center; padding: 8px 0;"><strong style="font-size: 1.1em;">${placeName}</strong></div>`;
     
@@ -979,7 +1071,7 @@ function createPopupContent(placeName, placeLat, placeLng, placeId = null) {
             <circle cx="12" cy="10" r="3"></circle>
         </svg>`;
     
-    content += `<div style="display: flex; gap: 8px; margin-top: 12px; width: 100%;">
+    const infoButtonHtml = hideInfoButton ? '' : `
         <button onclick="showPlaceInfo(${placeId !== null ? placeId : 'null'}, '${escapedName}', ${placeLat}, ${placeLng})" 
                 class="popup-btn popup-btn-info"
                 style="flex: 1; background: #007AFF; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9em; font-weight: 500;">
@@ -988,7 +1080,10 @@ function createPopupContent(placeName, placeLat, placeLng, placeId = null) {
                 <line x1="12" y1="16" x2="12" y2="12"></line>
                 <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
-        </button>
+        </button>`;
+    
+    content += `<div style="display: flex; gap: 8px; margin-top: 12px; width: 100%;">
+        ${infoButtonHtml}
         <button onclick="showRoute(${placeLat}, ${placeLng}, '${escapedName}')" 
                 class="popup-btn popup-btn-route"
                 style="flex: 1; background: ${routeButtonBg}; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.9em; font-weight: 500;">
@@ -1101,6 +1196,13 @@ function updateAllPopups() {
             dayMarkers[day][hotel.name].setPopupContent(createPopupContent(hotel.name, hotel.lat, hotel.lng, null));
         }
     });
+
+    Object.keys(referenceMarkers).forEach(mapKey => {
+        (referenceMarkers[mapKey] || []).forEach(marker => {
+            const latlng = marker.getLatLng();
+            marker.setPopupContent(createPopupContent('Repère personnalisé', latlng.lat, latlng.lng, null, true));
+        });
+    });
 }
 
 function startGPSLocation() {
@@ -1170,20 +1272,19 @@ function startGPSLocation() {
     );
 }
 
-    const centerLocationBtn = document.getElementById('center-user-location');
-    if (centerLocationBtn) {
-        centerLocationBtn.addEventListener('click', () => {
-            const map = maps['all'];
-            if (!map) return;
-            
-            if (!currentUserPosition) {
-                alert('Position GPS non disponible');
-                return;
-            }
-            
-            map.setView([currentUserPosition.lat, currentUserPosition.lng], 16);
-        });
-    }
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.center-location-btn');
+        if (!btn) return;
+        const day = btn.dataset.day;
+        if (!day) return;
+        const map = maps[day];
+        if (!map) return;
+        if (!currentUserPosition) {
+            alert('Position GPS non disponible');
+            return;
+        }
+        map.setView([currentUserPosition.lat, currentUserPosition.lng], 16);
+    });
 
     const showRouteCalculatorBtn = document.getElementById('show-route-calculator');
     if (showRouteCalculatorBtn) {
