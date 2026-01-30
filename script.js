@@ -378,11 +378,17 @@ const createRedIcon = () => {
 
 const createHotelIcon = () => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="28" viewBox="0 0 24 28">
-        <path fill="#8B4513" d="M12 0L0 8v20h24V8L12 0z"/>
-        <path fill="#A0522D" d="M12 2l9 6v18H3V8l9-6z"/>
-        <rect fill="#DEB887" x="9" y="11" width="6" height="10"/>
-        <rect fill="#8B4513" x="10" y="14" width="1.5" height="2"/>
-        <rect fill="#8B4513" x="12.5" y="14" width="1.5" height="2"/>
+        <rect fill="#2C3E50" x="4" y="4" width="16" height="24" rx="1"/>
+        <rect fill="#34495E" x="5" y="5" width="14" height="22" rx="0.5"/>
+        <rect fill="#3498DB" x="7" y="7" width="2" height="2"/>
+        <rect fill="#3498DB" x="11" y="7" width="2" height="2"/>
+        <rect fill="#3498DB" x="15" y="7" width="2" height="2"/>
+        <rect fill="#3498DB" x="7" y="11" width="2" height="2"/>
+        <rect fill="#3498DB" x="11" y="11" width="2" height="2"/>
+        <rect fill="#3498DB" x="15" y="11" width="2" height="2"/>
+        <rect fill="#3498DB" x="7" y="15" width="2" height="2"/>
+        <rect fill="#3498DB" x="11" y="15" width="2" height="2"/>
+        <rect fill="#3498DB" x="15" y="15" width="2" height="2"/>
     </svg>`;
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
