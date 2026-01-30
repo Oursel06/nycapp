@@ -543,6 +543,7 @@ function initMap(day) {
     const hotelMarker = L.marker([hotel.lat, hotel.lng], { icon: hotelIcon })
         .addTo(map)
         .bindPopup(createPopupContent(hotel.name, hotel.lat, hotel.lng, null));
+    dayMarkers[day][hotel.name] = hotelMarker;
 
     const bounds = coordinates.map(c => [c.lat, c.lng]);
     bounds.push([hotel.lat, hotel.lng]);
